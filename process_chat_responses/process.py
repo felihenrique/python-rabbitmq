@@ -1,4 +1,3 @@
-from typing import Any
 
-async def process(message: Any):
-    print(message)
+async def process(reviews: list[dict]):
+    print(reviews)
