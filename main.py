@@ -1,7 +1,7 @@
 import asyncio
 from config import config
 from message_broker import MessageBrokerRabbitMQ, MessageBrokerInterface
-from typing import Any
+from process_chat_responses import process
 
 async def main():
     broker: MessageBrokerInterface = MessageBrokerRabbitMQ()
@@ -10,10 +10,7 @@ async def main():
         config.rabbitmq_prefetch_count
     )
 
-    async def consumer(message: Any):
-        print(message)
-
-    await broker.register_consumer('teste', consumer)
+    await broker.register_consumer(config.rabbitmq_queue_name, process)
 
     try:
         print('Application started consuming')
