@@ -1,15 +1,16 @@
-from message_broker.MessageBrokerRabbitMQ import MessageBrokerRabbitMQ
-from config import config
 import asyncio
+from config import config
+from message_broker import MessageBrokerRabbitMQ, MessageBrokerInterface
+from typing import Any
 
 async def main():
-    broker = MessageBrokerRabbitMQ()
+    broker: MessageBrokerInterface = MessageBrokerRabbitMQ()
     await broker.connect(
         config.rabbitmq_uri,
         config.rabbitmq_prefetch_count
     )
 
-    async def consumer(message):
+    async def consumer(message: Any):
         print(message)
 
     await broker.register_consumer('teste', consumer)

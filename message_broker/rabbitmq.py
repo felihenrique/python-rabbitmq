@@ -1,17 +1,21 @@
-from message_broker.MessageBrokerInterface import MessageBrokerInterface
 import aio_pika
 import json
 from collections.abc import Callable
-from typing import Any, Coroutine
+from typing import Any, Coroutine, Optional
 
-class MessageBrokerRabbitMQ(MessageBrokerInterface):
-    __connection: aio_pika.abc.AbstractRobustConnection = None
-    __channel: aio_pika.abc.AbstractChannel = None
+class NotConnectedException(Exception):
+    """
+        Exception thrown when rabbitmq is not connected
+    """
+
+class MessageBrokerRabbitMQ:
+    __connection: Optional[aio_pika.abc.AbstractRobustConnection] = None
+    __channel: Optional[aio_pika.abc.AbstractChannel] = None
     __queues = {}
 
     async def __get_or_create_queue__(self, queue_name: str) -> aio_pika.abc.AbstractQueue:
-        if self.__connection == None:
-            raise Exception("RabbitMQ is not connected. Please call connect() first.")
+        if self.__connection is None or self.__channel is None:
+            raise NotConnectedException("RabbitMQ is not connected. Please call connect() first.")
         if self.__queues.get(queue_name):
             return self.__queues[queue_name]
         queue = await self.__channel.declare_queue(queue_name)
@@ -23,9 +27,9 @@ class MessageBrokerRabbitMQ(MessageBrokerInterface):
         self.__channel = await self.__connection.channel()
         await self.__channel.set_qos(parallel_messages)
 
-    async def send_message(self, queue_name: str, data: dict):
+    async def send_message(self, queue_name: str, data: bytes):
         queue = await self.__get_or_create_queue__(queue_name)
-        queue.channel.basic_publish(data, routing_key=queue_name)
+        await queue.channel.basic_publish(data, routing_key=queue_name)
 
     async def register_consumer(self, queue_name: str, callback: Callable[[Any], Coroutine]):
         queue = await self.__get_or_create_queue__(queue_name)
@@ -41,5 +45,7 @@ class MessageBrokerRabbitMQ(MessageBrokerInterface):
         await queue.consume(dummy_callback)
 
     async def close(self):
+        if self.__connection is None or self.__channel is None:
+            raise NotConnectedException("RabbitMQ is not connected. Please call connect() first.")
         await self.__channel.close()
         await self.__connection.close()
