@@ -31,18 +31,18 @@ class MessageBrokerRabbitMQ:
         queue = await self.__get_or_create_queue__(queue_name)
         await queue.channel.basic_publish(data, routing_key=queue_name)
 
-    async def register_consumer(self, queue_name: str, callback: Callable[[Any], Coroutine]):
+    async def register_consumer(self, queue_name: str, consumer: Callable[[Any], Coroutine]):
         queue = await self.__get_or_create_queue__(queue_name)
-        async def dummy_callback(message: aio_pika.abc.AbstractIncomingMessage):
+        async def dummy_consumer(message: aio_pika.abc.AbstractIncomingMessage):
             message_body = json.loads(message.body)
             try:
-                await callback(message_body)
+                await consumer(message_body)
             except Exception as error:
                 print('An error ocurred while processing message: ')
                 print(error)
             finally:
                 await message.ack()
-        await queue.consume(dummy_callback)
+        await queue.consume(dummy_consumer)
 
     async def close(self):
         if self.__connection is None or self.__channel is None:
